@@ -16,7 +16,6 @@ const uint8_t btnUp = 10;
 const uint8_t btnDown = 9;
 const uint8_t btnSelect = 8;
 
-
 bool work = false;
 
 enum Status {
@@ -40,6 +39,8 @@ DriverInformation driver1 = {REST};
 int menu = 1;
 const int maxMenu = 2;
 float currentlyTruckSpeed = 0;
+unsigned long startDateTime = 0;
+unsigned long debounceTime = 5000;
 
 void setup() {
   Serial.begin(9600);
@@ -103,17 +104,12 @@ void loop() {
 
   float truckSpeed = map(value,0,1023,0,90); //km/h
 
-  if( truckSpeed != currentlyTruckSpeed)
-  {
-    currentlyTruckSpeed = truckSpeed;
-    standardmenu(now, currentlyTruckSpeed);
-  }
-
-
   display.showNumberDec(truckSpeed);
 
   if(truckSpeed > 0 && driver1.status == REST)
   {
+    startDateTime = millis();
+
     driver1.status = DRIVING;
     lcd.clear();
     
@@ -123,9 +119,18 @@ void loop() {
     lcd.setCursor(0,1);
     lcd.print(statusText[driver1.status]);
 
-    delay(2000);
+    //delay(2000);
   }
 
+  if( truckSpeed != currentlyTruckSpeed)
+  {
+    if( (millis() - startDateTime) > debounceTime )
+    {
+       startDateTime = millis();
+       currentlyTruckSpeed = truckSpeed;
+       standardmenu(now, currentlyTruckSpeed);
+    }
+  }
 }
 
 void standardmenu(DateTime now, float truckspeed)
