@@ -9,14 +9,20 @@ TM1637TinyDisplay display(CLK,DIO);
 LiquidCrystal_I2C lcd(0x27,16,2);
 RTC_DS1307 rtc;
 
+struct Button {
+  uint8_t pin;
+  bool lastRead;
+  bool stableState;
+  unsigned long lastChange;
+};
+
 
 int potPin = A0;
 
-const uint8_t btnUp = 10;
-const uint8_t btnDown = 9;
-const uint8_t btnSelect = 8;
 
-bool work = false;
+Button btnUp = {10, HIGH, HIGH, 0};
+Button btnDown = {9, HIGH, HIGH, 0};
+Button btnSelect = {8, HIGH, HIGH, 0};
 
 enum Status {
   DRIVING,
@@ -41,13 +47,14 @@ const int maxMenu = 2;
 float currentlyTruckSpeed = 0;
 unsigned long startDateTime = 0;
 unsigned long debounceTime = 5000;
+unsigned long debounce = 50;
 
 void setup() {
   Serial.begin(9600);
 
-  pinMode(btnUp, INPUT_PULLUP);
-  pinMode(btnDown, INPUT_PULLUP);
-  pinMode(btnSelect, INPUT_PULLUP);
+  pinMode(btnUp.pin, INPUT_PULLUP);
+  pinMode(btnDown.pin, INPUT_PULLUP);
+  pinMode(btnSelect.pin, INPUT_PULLUP);
 
   lcd.init();
   lcd.backlight();
@@ -78,7 +85,7 @@ void setup() {
 void loop() {
   DateTime now = rtc.now();
 
-  if( btnUp == LOW )
+  if( checkButton(btnUp, debounce) )
   {
     menu++;
     if( menu > maxMenu)
@@ -86,10 +93,10 @@ void loop() {
       menu = 1;
     }
 
-    //updatemenu();
+    updateMenu();
   }
 
-  if( btnDown == LOW )
+  if( checkButton(btnDown, debounce) )
   {
     menu--;
     if( menu < 1)
@@ -97,7 +104,15 @@ void loop() {
       menu = maxMenu;
     }
 
-    //updatemenu();
+    updateMenu();
+  }
+  
+
+  if( checkButton(btnSelect, debounce) )
+  {
+    menu = 1;
+
+    updateMenu();
   }
 
   int value = analogRead(potPin);
@@ -161,3 +176,46 @@ void standardmenu(DateTime now, float truckspeed)
   lcd.print(statusText[driver1.status]);
 }
 
+void updateMenu()
+{
+  lcd.clear();
+
+  switch(menu)
+  {
+    case 1:
+      lcd.print("Change Status");
+      break;
+    case 2:
+      lcd.print("Driving Time");
+      break;
+  }
+}
+
+bool checkButton( Button &button,
+unsigned long debounceTime)
+{
+  bool reading = digitalRead(button.pin);
+
+   if( reading !=  button.lastRead)
+   {
+    button.lastChange = millis();
+   }
+
+   if ( (millis()-button.lastChange) > debounceTime)
+   {
+    if( reading != button.stableState)
+    {
+      button.stableState = reading;
+
+      if( button.stableState == LOW )
+      {
+        button.lastRead = reading;
+        return true;
+      }
+    }
+   }
+
+   button.lastRead = reading;
+   return false;
+
+}
