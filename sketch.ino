@@ -43,6 +43,7 @@ struct DriverInformation
 DriverInformation driver1 = {REST};
 
 int menu = 1;
+int basemenu = 1;
 const int maxMenu = 2;
 float currentlyTruckSpeed = 0;
 unsigned long startDateTime = 0;
@@ -87,24 +88,31 @@ void loop() {
 
   if( checkButton(btnUp, debounce) )
   {
-    menu++;
-    if( menu > maxMenu)
+    if(basemenu == 1)
     {
-      menu = 1;
-    }
+      menu++;
+      if( menu > maxMenu)
+      {
+        menu = 1;
+      }
 
-    updateMenu();
+      updateMenu();
+    }
   }
 
   if( checkButton(btnDown, debounce) )
   {
-    menu--;
-    if( menu < 1)
+    if(basemenu == 1)
     {
-      menu = maxMenu;
-    }
+       menu--;
+      if( menu < 1)
+      {
+        menu = maxMenu;
+      }
 
-    updateMenu();
+      updateMenu();
+    }
+   
   }
   
 
@@ -112,7 +120,12 @@ void loop() {
   {
     menu = 1;
 
-    updateMenu();
+    if( basemenu == 1)
+    {
+      updateMenu();
+    }
+
+    
   }
 
   int value = analogRead(potPin);
@@ -136,6 +149,24 @@ void loop() {
 
     //delay(2000);
   }
+
+  
+  if( truckSpeed == 0 && driver1.status == DRIVING)
+  {
+    if( (millis() - startDateTime) > debounceTime )
+    {
+      driver1.status = REST;
+      lcd.clear();
+      
+      lcd.setCursor(0,0);
+      lcd.print("Status:");
+      
+      lcd.setCursor(0,1);
+      lcd.print(statusText[driver1.status]);
+  }
+  }
+  
+  
 
   if( truckSpeed != currentlyTruckSpeed)
   {
@@ -189,6 +220,7 @@ void updateMenu()
       lcd.print("Driving Time");
       break;
   }
+
 }
 
 bool checkButton( Button &button,
